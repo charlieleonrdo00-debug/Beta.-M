@@ -1,0 +1,77 @@
+name: Lobo Gélido - Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lobo-gelido-android
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unzip source
+        run: |
+          unzip -o "LoboGelido_57.28.2_Frente1_VulkanPresenter_FramesInFlight_2026-09-18.zip" -d _src
+          rm -rf lobo_final
+          mv _src/lobo_final ./lobo_final
+          rmdir _src
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK/NDK/CMake
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "cmake;3.22.1" \
+            "ndk;27.3.13750724"
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Run native tests
+        working-directory: lobo_final
+        run: |
+          cmake -S . -B build-ci -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-ci -j2
+          ctest --test-dir build-ci --output-on-failure
+
+      - name: Build ARM64 debug APK
+        working-directory: lobo_final/android
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Verify APK exists
+        working-directory: lobo_final/android
+        run: |
+          find app/build/outputs/apk -type f -name "*.apk" -print
+          test -n "$(find app/build/outputs/apk -type f -name '*.apk' -print -quit)"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lobo-Gelido-57.28.2-APK
+          path: lobo_final/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
