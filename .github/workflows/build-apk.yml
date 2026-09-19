@@ -25,7 +25,7 @@ jobs:
 
       - name: Unzip source
         run: |
-          unzip -o "LoboGelido_57.28.2_Frente1_VulkanPresenter_FramesInFlight_2026-09-18.zip" -d _src
+          unzip -o "LoboGelido_57.28.2-beta1_SEALED_SOURCE_2026-09-18.zip" -d _src
           rm -rf lobo_final
           mv _src/lobo_final ./lobo_final
           rmdir _src
@@ -33,7 +33,7 @@ jobs:
       - name: Patch known build.gradle.kts bug (buildConfigField misplaced)
         run: |
           sed -i '/buildConfigField("boolean", "VULKAN_SMOKE_TEST", "true")/d' lobo_final/android/app/build.gradle.kts
-          sed -i '/versionName = "57.28"/a\        buildConfigField("boolean", "VULKAN_SMOKE_TEST", "true")' lobo_final/android/app/build.gradle.kts
+          sed -i '/versionName = "57.28.2-beta1"/a\        buildConfigField("boolean", "VULKAN_SMOKE_TEST", "true")' lobo_final/android/app/build.gradle.kts
           grep -n "buildConfigField" lobo_final/android/app/build.gradle.kts
 
       - name: Set up JDK 17
@@ -69,7 +69,10 @@ jobs:
 
       - name: Build ARM64 debug APK
         working-directory: lobo_final/android
-        run: gradle --no-daemon --stacktrace assembleDebug
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace assembleDebug --info 2>&1 | tee build.log
 
       - name: Verify APK exists
         working-directory: lobo_final/android
@@ -80,7 +83,16 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Lobo-Gelido-57.28.2-APK
+          name: Lobo-Gelido-57.28.2-beta1-APK
           path: lobo_final/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload full build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: lobo_final/android/build.log
+          if-no-files-found: ignore
           retention-days: 14
