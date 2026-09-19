@@ -16,6 +16,9 @@ jobs:
   build-apk:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,12 +36,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Put sdkmanager on PATH
+        run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
-      - name: Install Android SDK/NDK/CMake
+      - name: Accept licenses and install Android SDK/NDK/CMake
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager \
             "platform-tools" \
             "platforms;android-36" \
