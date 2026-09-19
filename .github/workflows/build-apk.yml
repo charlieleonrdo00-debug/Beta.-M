@@ -30,6 +30,12 @@ jobs:
           mv _src/lobo_final ./lobo_final
           rmdir _src
 
+      - name: Patch known build.gradle.kts bug (buildConfigField misplaced)
+        run: |
+          sed -i '/buildConfigField("boolean", "VULKAN_SMOKE_TEST", "true")/d' lobo_final/android/app/build.gradle.kts
+          sed -i '/versionName = "57.28"/a\        buildConfigField("boolean", "VULKAN_SMOKE_TEST", "true")' lobo_final/android/app/build.gradle.kts
+          grep -n "buildConfigField" lobo_final/android/app/build.gradle.kts
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
